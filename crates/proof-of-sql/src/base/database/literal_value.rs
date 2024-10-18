@@ -1,4 +1,8 @@
-use crate::base::{database::ColumnType, math::decimal::Precision, scalar::Scalar};
+use crate::base::{
+    database::{ColumnNullability, ColumnType},
+    math::decimal::Precision,
+    scalar::Scalar,
+};
 use alloc::string::String;
 use proof_of_sql_parser::posql_time::{PoSQLTimeUnit, PoSQLTimeZone};
 use serde::{Deserialize, Serialize};
@@ -42,16 +46,20 @@ impl<S: Scalar> LiteralValue<S> {
     /// Provides the column type associated with the column
     pub fn column_type(&self) -> ColumnType {
         match self {
-            Self::Boolean(_) => ColumnType::Boolean,
-            Self::TinyInt(_) => ColumnType::TinyInt,
-            Self::SmallInt(_) => ColumnType::SmallInt,
-            Self::Int(_) => ColumnType::Int,
-            Self::BigInt(_) => ColumnType::BigInt,
-            Self::VarChar(_) => ColumnType::VarChar,
-            Self::Int128(_) => ColumnType::Int128,
-            Self::Scalar(_) => ColumnType::Scalar,
-            Self::Decimal75(precision, scale, _) => ColumnType::Decimal75(*precision, *scale),
-            Self::TimeStampTZ(tu, tz, _) => ColumnType::TimestampTZ(*tu, *tz),
+            Self::Boolean(_) => ColumnType::Boolean(ColumnNullability::NotNullable),
+            Self::TinyInt(_) => ColumnType::TinyInt(ColumnNullability::NotNullable),
+            Self::SmallInt(_) => ColumnType::SmallInt(ColumnNullability::NotNullable),
+            Self::Int(_) => ColumnType::Int(ColumnNullability::NotNullable),
+            Self::BigInt(_) => ColumnType::BigInt(ColumnNullability::NotNullable),
+            Self::VarChar(_) => ColumnType::VarChar(ColumnNullability::NotNullable),
+            Self::Int128(_) => ColumnType::Int128(ColumnNullability::NotNullable),
+            Self::Scalar(_) => ColumnType::Scalar(ColumnNullability::NotNullable),
+            Self::Decimal75(precision, scale, _) => {
+                ColumnType::Decimal75(ColumnNullability::NotNullable, *precision, *scale)
+            }
+            Self::TimeStampTZ(tu, tz, _) => {
+                ColumnType::TimestampTZ(ColumnNullability::NotNullable, *tu, *tz)
+            }
         }
     }
 

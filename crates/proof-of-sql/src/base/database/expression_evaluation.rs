@@ -1,4 +1,4 @@
-use super::{ExpressionEvaluationError, ExpressionEvaluationResult};
+use super::{ColumnNullability, ExpressionEvaluationError, ExpressionEvaluationResult};
 use crate::base::{
     database::{OwnedColumn, OwnedTable},
     math::decimal::{try_into_to_scalar, Precision},
@@ -40,17 +40,35 @@ impl<S: Scalar> OwnedTable<S> {
     fn evaluate_literal(&self, lit: &Literal) -> ExpressionEvaluationResult<OwnedColumn<S>> {
         let len = self.num_rows();
         match lit {
-            Literal::Boolean(b) => Ok(OwnedColumn::Boolean(vec![*b; len])),
-            Literal::BigInt(i) => Ok(OwnedColumn::BigInt(vec![*i; len])),
-            Literal::Int128(i) => Ok(OwnedColumn::Int128(vec![*i; len])),
+            Literal::Boolean(b) => Ok(OwnedColumn::Boolean(
+                ColumnNullability::NotNullable,
+                vec![*b; len],
+            )),
+            Literal::BigInt(i) => Ok(OwnedColumn::BigInt(
+                ColumnNullability::NotNullable,
+                vec![*i; len],
+            )),
+            Literal::Int128(i) => Ok(OwnedColumn::Int128(
+                ColumnNullability::NotNullable,
+                vec![*i; len],
+            )),
             Literal::Decimal(d) => {
                 let scale = d.scale();
                 let precision = Precision::new(d.precision())?;
                 let scalar = try_into_to_scalar(d, precision, scale)?;
-                Ok(OwnedColumn::Decimal75(precision, scale, vec![scalar; len]))
+                Ok(OwnedColumn::Decimal75(
+                    ColumnNullability::NotNullable,
+                    precision,
+                    scale,
+                    vec![scalar; len],
+                ))
             }
-            Literal::VarChar(s) => Ok(OwnedColumn::VarChar(vec![s.clone(); len])),
+            Literal::VarChar(s) => Ok(OwnedColumn::VarChar(
+                ColumnNullability::NotNullable,
+                vec![s.clone(); len],
+            )),
             Literal::Timestamp(its) => Ok(OwnedColumn::TimestampTZ(
+                ColumnNullability::NotNullable,
                 its.timeunit(),
                 its.timezone(),
                 vec![its.timestamp().timestamp(); len],

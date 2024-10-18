@@ -1,6 +1,6 @@
 use super::{ProvableQueryResult, QueryError};
 use crate::base::{
-    database::{Column, ColumnField, ColumnType},
+    database::{Column, ColumnField, ColumnNullability, ColumnType},
     math::decimal::Precision,
     polynomial::compute_evaluation_vector,
     scalar::{Curve25519Scalar, Scalar},
@@ -15,9 +15,13 @@ use num_traits::Zero;
 
 #[test]
 fn we_can_convert_an_empty_provable_result_to_a_final_result() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[0_i64; 0])];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[0_i64; 0])];
     let res = ProvableQueryResult::new(0, &cols);
-    let column_fields = vec![ColumnField::new("a1".parse().unwrap(), ColumnType::BigInt)];
+    let column_fields = vec![ColumnField::new(
+        "a1".parse().unwrap(),
+        ColumnType::BigInt(ColumnNullability::NotNullable),
+    )];
     let res = RecordBatch::try_from(
         res.to_owned_table::<Curve25519Scalar>(&column_fields)
             .unwrap(),
@@ -35,7 +39,8 @@ fn we_can_convert_an_empty_provable_result_to_a_final_result() {
 
 #[test]
 fn we_can_evaluate_result_columns_as_mles() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[10, -12])];
+    let meta = ColumnNullability::NotNullable;
+    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(meta, &[10, -12])];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -44,8 +49,13 @@ fn we_can_evaluate_result_columns_as_mles() {
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
 
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); cols.len()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        cols.len()
+    ];
     let evals = res
         .evaluate(&evaluation_point, 2, &column_fields[..])
         .unwrap();
@@ -57,13 +67,19 @@ fn we_can_evaluate_result_columns_as_mles() {
 
 #[test]
 fn we_can_evaluate_result_columns_with_no_rows() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[0; 0])];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[0; 0])];
     let res = ProvableQueryResult::new(0, &cols);
     let evaluation_point = [];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 0];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); cols.len()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        cols.len()
+    ];
     let evals = res
         .evaluate(&evaluation_point, 0, &column_fields[..])
         .unwrap();
@@ -73,7 +89,10 @@ fn we_can_evaluate_result_columns_with_no_rows() {
 
 #[test]
 fn we_can_evaluate_multiple_result_columns_as_mles() {
-    let cols: [Column<Curve25519Scalar>; 2] = [Column::BigInt(&[10, 12]), Column::BigInt(&[5, 9])];
+    let cols: [Column<Curve25519Scalar>; 2] = [
+        Column::BigInt(ColumnNullability::NotNullable, &[10, 12]),
+        Column::BigInt(ColumnNullability::NotNullable, &[5, 9]),
+    ];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -81,8 +100,13 @@ fn we_can_evaluate_multiple_result_columns_as_mles() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); cols.len()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        cols.len()
+    ];
     let evals = res
         .evaluate(&evaluation_point, 2, &column_fields[..])
         .unwrap();
@@ -97,7 +121,10 @@ fn we_can_evaluate_multiple_result_columns_as_mles() {
 
 #[test]
 fn we_can_evaluate_multiple_result_columns_as_mles_with_128_bits() {
-    let cols: [Column<Curve25519Scalar>; 2] = [Column::Int128(&[10, 12]), Column::Int128(&[5, 9])];
+    let cols: [Column<Curve25519Scalar>; 2] = [
+        Column::Int128(ColumnNullability::NotNullable, &[10, 12]),
+        Column::Int128(ColumnNullability::NotNullable, &[5, 9]),
+    ];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -105,8 +132,13 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_128_bits() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::Int128); cols.len()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::Int128(ColumnNullability::NotNullable)
+        );
+        cols.len()
+    ];
     let evals = res
         .evaluate(&evaluation_point, 2, &column_fields[..])
         .unwrap();
@@ -122,6 +154,7 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_128_bits() {
 #[allow(clippy::similar_names)]
 #[test]
 fn we_can_evaluate_multiple_result_columns_as_mles_with_scalar_columns() {
+    let meta = ColumnNullability::NotNullable;
     let col0 = [10, 12]
         .iter()
         .map(|v| Curve25519Scalar::from(*v))
@@ -130,7 +163,8 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_scalar_columns() {
         .iter()
         .map(|v| Curve25519Scalar::from(*v))
         .collect::<Vec<_>>();
-    let cols: [Column<Curve25519Scalar>; 2] = [Column::Scalar(&col0), Column::Scalar(&col1)];
+    let cols: [Column<Curve25519Scalar>; 2] =
+        [Column::Scalar(meta, &col0), Column::Scalar(meta, &col1)];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -139,7 +173,7 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_scalar_columns() {
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
     let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::Scalar); cols.len()];
+        vec![ColumnField::new("a".parse().unwrap(), ColumnType::Scalar(meta)); cols.len()];
     let evals = res
         .evaluate(&evaluation_point, 2, &column_fields[..])
         .unwrap();
@@ -154,7 +188,10 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_scalar_columns() {
 
 #[test]
 fn we_can_evaluate_multiple_result_columns_as_mles_with_mixed_data_types() {
-    let cols: [Column<Curve25519Scalar>; 2] = [Column::BigInt(&[10, 12]), Column::Int128(&[5, 9])];
+    let cols: [Column<Curve25519Scalar>; 2] = [
+        Column::BigInt(ColumnNullability::NotNullable, &[10, 12]),
+        Column::Int128(ColumnNullability::NotNullable, &[5, 9]),
+    ];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -163,8 +200,14 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_mixed_data_types() {
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
     let column_fields = [
-        ColumnField::new("a".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("a".parse().unwrap(), ColumnType::Int128),
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        ),
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::Int128(ColumnNullability::NotNullable),
+        ),
     ];
     let evals = res
         .evaluate(&evaluation_point, 2, &column_fields[..])
@@ -180,7 +223,8 @@ fn we_can_evaluate_multiple_result_columns_as_mles_with_mixed_data_types() {
 
 #[test]
 fn evaluation_fails_if_extra_data_is_included() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[10, 12])];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[10, 12])];
     let mut res = ProvableQueryResult::new(2, &cols);
     res.data_mut().push(3u8);
     let evaluation_point = [
@@ -189,8 +233,13 @@ fn evaluation_fails_if_extra_data_is_included() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); cols.len()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        cols.len()
+    ];
     assert!(matches!(
         res.evaluate(&evaluation_point, 2, &column_fields[..]),
         Err(QueryError::MiscellaneousEvaluationError)
@@ -207,8 +256,13 @@ fn evaluation_fails_if_the_result_cant_be_decoded() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); res.num_columns()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        res.num_columns()
+    ];
     assert!(matches!(
         res.evaluate(&evaluation_point, 2, &column_fields[..]),
         Err(QueryError::Overflow)
@@ -218,7 +272,8 @@ fn evaluation_fails_if_the_result_cant_be_decoded() {
 #[test]
 fn evaluation_fails_if_integer_overflow_happens() {
     let binding = [i64::from(i32::MAX) + 1_i64, 12];
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&binding)];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &binding)];
     let res = ProvableQueryResult::new(2, &cols);
     let evaluation_point = [
         Curve25519Scalar::from(10u64),
@@ -226,8 +281,13 @@ fn evaluation_fails_if_integer_overflow_happens() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::Int); res.num_columns()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::Int(ColumnNullability::NotNullable)
+        );
+        res.num_columns()
+    ];
     assert!(matches!(
         res.evaluate(&evaluation_point, 2, &column_fields[..]),
         Err(QueryError::Overflow)
@@ -236,7 +296,8 @@ fn evaluation_fails_if_integer_overflow_happens() {
 
 #[test]
 fn evaluation_fails_if_data_is_missing() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[10, 12])];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[10, 12])];
     let mut res = ProvableQueryResult::new(2, &cols);
     *res.num_columns_mut() = 3;
     let evaluation_point = [
@@ -245,8 +306,13 @@ fn evaluation_fails_if_data_is_missing() {
     ];
     let mut evaluation_vec = [Curve25519Scalar::ZERO; 2];
     compute_evaluation_vector(&mut evaluation_vec, &evaluation_point);
-    let column_fields =
-        vec![ColumnField::new("a".parse().unwrap(), ColumnType::BigInt); res.num_columns()];
+    let column_fields = vec![
+        ColumnField::new(
+            "a".parse().unwrap(),
+            ColumnType::BigInt(ColumnNullability::NotNullable),
+        );
+        res.num_columns()
+    ];
     assert!(matches!(
         res.evaluate(&evaluation_point, 2, &column_fields[..]),
         Err(QueryError::Overflow)
@@ -255,9 +321,13 @@ fn evaluation_fails_if_data_is_missing() {
 
 #[test]
 fn we_can_convert_a_provable_result_to_a_final_result() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::BigInt(&[10, 12])];
+    let cols: [Column<Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[10, 12])];
     let res = ProvableQueryResult::new(2, &cols);
-    let column_fields = vec![ColumnField::new("a1".parse().unwrap(), ColumnType::BigInt)];
+    let column_fields = vec![ColumnField::new(
+        "a1".parse().unwrap(),
+        ColumnType::BigInt(ColumnNullability::NotNullable),
+    )];
     let res = RecordBatch::try_from(
         res.to_owned_table::<Curve25519Scalar>(&column_fields)
             .unwrap(),
@@ -275,9 +345,15 @@ fn we_can_convert_a_provable_result_to_a_final_result() {
 
 #[test]
 fn we_can_convert_a_provable_result_to_a_final_result_with_128_bits() {
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::Int128(&[10, i128::MAX])];
+    let cols: [Column<Curve25519Scalar>; 1] = [Column::Int128(
+        ColumnNullability::NotNullable,
+        &[10, i128::MAX],
+    )];
     let res = ProvableQueryResult::new(2, &cols);
-    let column_fields = vec![ColumnField::new("a1".parse().unwrap(), ColumnType::Int128)];
+    let column_fields = vec![ColumnField::new(
+        "a1".parse().unwrap(),
+        ColumnType::Int128(ColumnNullability::NotNullable),
+    )];
     let res = RecordBatch::try_from(
         res.to_owned_table::<Curve25519Scalar>(&column_fields)
             .unwrap(),
@@ -302,13 +378,14 @@ fn we_can_convert_a_provable_result_to_a_final_result_with_128_bits() {
 
 #[test]
 fn we_can_convert_a_provable_result_to_a_final_result_with_252_bits() {
+    let meta = ColumnNullability::NotNullable;
     let values = [Curve25519Scalar::from(10), Curve25519Scalar::MAX_SIGNED];
 
-    let cols: [Column<Curve25519Scalar>; 1] = [Column::Scalar(&values)];
+    let cols: [Column<Curve25519Scalar>; 1] = [Column::Scalar(meta, &values)];
     let res = ProvableQueryResult::new(2, &cols);
     let column_fields = vec![ColumnField::new(
         "a1".parse().unwrap(),
-        ColumnType::Decimal75(Precision::new(75).unwrap(), 0),
+        ColumnType::Decimal75(meta, Precision::new(75).unwrap(), 0),
     )];
     let res = RecordBatch::try_from(
         res.to_owned_table::<Curve25519Scalar>(&column_fields)
@@ -335,6 +412,7 @@ fn we_can_convert_a_provable_result_to_a_final_result_with_252_bits() {
 
 #[test]
 fn we_can_convert_a_provable_result_to_a_final_result_with_mixed_data_types() {
+    let meta = ColumnNullability::NotNullable;
     let values1: [i64; 2] = [6, i64::MAX];
     let values2: [i128; 2] = [10, i128::MAX];
     let values3 = ["abc", "de"];
@@ -345,19 +423,19 @@ fn we_can_convert_a_provable_result_to_a_final_result_with_mixed_data_types() {
     let values4 = [Curve25519Scalar::from(10), Curve25519Scalar::MAX_SIGNED];
 
     let cols: [Column<Curve25519Scalar>; 4] = [
-        Column::BigInt(&values1),
-        Column::Int128(&values2),
-        Column::VarChar((&values3, &scalars3)),
-        Column::Scalar(&values4),
+        Column::BigInt(meta, &values1),
+        Column::Int128(meta, &values2),
+        Column::VarChar(meta, (&values3, &scalars3)),
+        Column::Scalar(meta, &values4),
     ];
     let res = ProvableQueryResult::new(2, &cols);
     let column_fields = vec![
-        ColumnField::new("a1".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("a2".parse().unwrap(), ColumnType::Int128),
-        ColumnField::new("a3".parse().unwrap(), ColumnType::VarChar),
+        ColumnField::new("a1".parse().unwrap(), ColumnType::BigInt(meta)),
+        ColumnField::new("a2".parse().unwrap(), ColumnType::Int128(meta)),
+        ColumnField::new("a3".parse().unwrap(), ColumnType::VarChar(meta)),
         ColumnField::new(
             "a4".parse().unwrap(),
-            ColumnType::Decimal75(Precision::new(75).unwrap(), 0),
+            ColumnType::Decimal75(meta, Precision::new(75).unwrap(), 0),
         ),
     ];
     let res = RecordBatch::try_from(

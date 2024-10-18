@@ -4,7 +4,10 @@ use super::{
 };
 use crate::base::{
     commitment::{Commitment, CommittableColumn},
-    database::{Column, CommitmentAccessor, OwnedTableTestAccessor, TableRef, TestAccessor},
+    database::{
+        Column, ColumnNullability, CommitmentAccessor, OwnedTableTestAccessor, TableRef,
+        TestAccessor,
+    },
     scalar::Curve25519Scalar,
 };
 use blitzar::proof::InnerProductProof;
@@ -92,7 +95,8 @@ fn tamper_no_result(
 ) {
     // add a result
     let mut res_p = res.clone();
-    let cols: [Column<'_, Curve25519Scalar>; 1] = [Column::BigInt(&[0_i64; 0])];
+    let cols: [Column<'_, Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[0_i64; 0])];
     res_p.provable_result = Some(ProvableQueryResult::new(0, &cols));
     assert!(res_p.verify(expr, accessor, &()).is_err());
 
@@ -115,7 +119,8 @@ fn tamper_empty_result(
 ) {
     // try to add a result
     let mut res_p = res.clone();
-    let cols: [Column<'_, Curve25519Scalar>; 1] = [Column::BigInt(&[123_i64])];
+    let cols: [Column<'_, Curve25519Scalar>; 1] =
+        [Column::BigInt(ColumnNullability::NotNullable, &[123_i64])];
     res_p.provable_result = Some(ProvableQueryResult::new(1, &cols));
     assert!(res_p.verify(expr, accessor, &()).is_err());
 }

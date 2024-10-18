@@ -2,7 +2,9 @@ use super::{DynProofExpr, ProofExpr};
 use crate::{
     base::{
         commitment::Commitment,
-        database::{Column, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor},
+        database::{
+            Column, ColumnNullability, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor,
+        },
         map::IndexSet,
         proof::ProofError,
         scalar::Scalar,
@@ -36,7 +38,7 @@ impl<C: Commitment> ProofExpr<C> for OrExpr<C> {
     }
 
     fn data_type(&self) -> ColumnType {
-        ColumnType::Boolean
+        ColumnType::Boolean(ColumnNullability::NotNullable)
     }
 
     #[tracing::instrument(name = "OrExpr::result_evaluate", level = "debug", skip_all)]
@@ -52,7 +54,10 @@ impl<C: Commitment> ProofExpr<C> for OrExpr<C> {
             self.rhs.result_evaluate(table_length, alloc, accessor);
         let lhs = lhs_column.as_boolean().expect("lhs is not boolean");
         let rhs = rhs_column.as_boolean().expect("rhs is not boolean");
-        Column::Boolean(result_evaluate_or(table_length, alloc, lhs, rhs))
+        Column::Boolean(
+            ColumnNullability::NotNullable,
+            result_evaluate_or(table_length, alloc, lhs, rhs),
+        )
     }
 
     #[tracing::instrument(name = "OrExpr::prover_evaluate", level = "debug", skip_all)]
@@ -66,7 +71,10 @@ impl<C: Commitment> ProofExpr<C> for OrExpr<C> {
         let rhs_column: Column<'a, C::Scalar> = self.rhs.prover_evaluate(builder, alloc, accessor);
         let lhs = lhs_column.as_boolean().expect("lhs is not boolean");
         let rhs = rhs_column.as_boolean().expect("rhs is not boolean");
-        Column::Boolean(prover_evaluate_or(builder, alloc, lhs, rhs))
+        Column::Boolean(
+            ColumnNullability::NotNullable,
+            prover_evaluate_or(builder, alloc, lhs, rhs),
+        )
     }
 
     fn verifier_evaluate(

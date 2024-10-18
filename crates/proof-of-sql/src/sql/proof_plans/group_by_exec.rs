@@ -6,8 +6,8 @@ use crate::{
             group_by_util::{
                 aggregate_columns, compare_indexes_by_owned_columns, AggregatedColumns,
             },
-            Column, ColumnField, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor,
-            MetadataAccessor, OwnedTable,
+            Column, ColumnField, ColumnNullability, ColumnRef, ColumnType, CommitmentAccessor,
+            DataAccessor, MetadataAccessor, OwnedTable,
         },
         map::IndexSet,
         proof::ProofError,
@@ -183,7 +183,7 @@ impl<C: Commitment> ProofPlan<C> for GroupByExec<C> {
             }))
             .chain(iter::once(ColumnField::new(
                 self.count_alias,
-                ColumnType::BigInt,
+                ColumnType::BigInt(ColumnNullability::NotNullable),
             )))
             .collect()
     }
@@ -244,11 +244,16 @@ impl<C: Commitment> ProverEvaluate<C::Scalar> for GroupByExec<C> {
             ..
         } = aggregate_columns(alloc, &group_by_columns, &sum_columns, &[], &[], selection)
             .expect("columns should be aggregatable");
-        let sum_result_columns_iter = sum_result_columns.iter().map(|col| Column::Scalar(col));
+        let sum_result_columns_iter = sum_result_columns
+            .iter()
+            .map(|col| Column::Scalar(ColumnNullability::NotNullable, col));
         group_by_result_columns
             .into_iter()
             .chain(sum_result_columns_iter)
-            .chain(iter::once(Column::BigInt(count_column)))
+            .chain(iter::once(Column::BigInt(
+                ColumnNullability::NotNullable,
+                count_column,
+            )))
             .collect::<Vec<_>>()
     }
 
@@ -295,12 +300,17 @@ impl<C: Commitment> ProverEvaluate<C::Scalar> for GroupByExec<C> {
         let beta = builder.consume_post_result_challenge();
 
         // 4. Tally results
-        let sum_result_columns_iter = sum_result_columns.iter().map(|col| Column::Scalar(col));
+        let sum_result_columns_iter = sum_result_columns
+            .iter()
+            .map(|col| Column::Scalar(ColumnNullability::NotNullable, col));
         let res = group_by_result_columns
             .clone()
             .into_iter()
             .chain(sum_result_columns_iter)
-            .chain(core::iter::once(Column::BigInt(count_column)))
+            .chain(core::iter::once(Column::BigInt(
+                ColumnNullability::NotNullable,
+                count_column,
+            )))
             .collect::<Vec<_>>();
         // 5. Produce MLEs
         res.iter().copied().for_each(|column| {

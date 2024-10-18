@@ -1,7 +1,7 @@
 use crate::{
     base::{
         commitment::InnerProductProof,
-        database::{owned_table_utility::*, Column, OwnedTableTestAccessor},
+        database::{owned_table_utility::*, Column, ColumnNullability, OwnedTableTestAccessor},
     },
     sql::{
         proof::{exercise_verification, VerifiableQueryResult},
@@ -161,6 +161,7 @@ fn we_can_compute_the_correct_output_of_an_and_expr_using_result_evaluate() {
     );
     let alloc = Bump::new();
     let res = and_expr.result_evaluate(4, &alloc, &accessor);
-    let expected_res = Column::Boolean(&[false, true, false, false]);
+    let expected_res =
+        Column::Boolean(ColumnNullability::NotNullable, &[false, true, false, false]);
     assert_eq!(res, expected_res);
 }

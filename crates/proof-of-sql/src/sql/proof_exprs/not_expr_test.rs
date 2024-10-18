@@ -1,7 +1,9 @@
 use crate::{
     base::{
         commitment::InnerProductProof,
-        database::{owned_table_utility::*, Column, OwnedTableTestAccessor, TestAccessor},
+        database::{
+            owned_table_utility::*, Column, ColumnNullability, OwnedTableTestAccessor, TestAccessor,
+        },
     },
     sql::{
         proof::{exercise_verification, VerifiableQueryResult},
@@ -121,6 +123,6 @@ fn we_can_compute_the_correct_output_of_a_not_expr_using_result_evaluate() {
         not(equal(column(t, "b", &accessor), const_int128(1)));
     let alloc = Bump::new();
     let res = not_expr.result_evaluate(2, &alloc, &accessor);
-    let expected_res = Column::Boolean(&[true, false]);
+    let expected_res = Column::Boolean(ColumnNullability::NotNullable, &[true, false]);
     assert_eq!(res, expected_res);
 }

@@ -7,7 +7,9 @@ use super::{
 use crate::{
     base::{
         commitment::Commitment,
-        database::{Column, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor},
+        database::{
+            Column, ColumnNullability, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor,
+        },
         map::IndexSet,
         proof::ProofError,
     },
@@ -51,7 +53,7 @@ impl<C: Commitment> ProofExpr<C> for InequalityExpr<C> {
     }
 
     fn data_type(&self) -> ColumnType {
-        ColumnType::Boolean
+        ColumnType::Boolean(ColumnNullability::NotNullable)
     }
 
     #[tracing::instrument(name = "InequalityExpr::result_evaluate", level = "debug", skip_all)]
@@ -80,7 +82,10 @@ impl<C: Commitment> ProofExpr<C> for InequalityExpr<C> {
         let sign = result_evaluate_sign(table_length, alloc, diff);
 
         // (diff == 0) || (sign(diff) == -1)
-        Column::Boolean(result_evaluate_or(table_length, alloc, equals_zero, sign))
+        Column::Boolean(
+            ColumnNullability::NotNullable,
+            result_evaluate_or(table_length, alloc, equals_zero, sign),
+        )
     }
 
     #[tracing::instrument(name = "InequalityExpr::prover_evaluate", level = "debug", skip_all)]
@@ -115,7 +120,10 @@ impl<C: Commitment> ProofExpr<C> for InequalityExpr<C> {
         );
 
         // (diff == 0) || (sign(diff) == -1)
-        Column::Boolean(prover_evaluate_or(builder, alloc, equals_zero, sign))
+        Column::Boolean(
+            ColumnNullability::NotNullable,
+            prover_evaluate_or(builder, alloc, equals_zero, sign),
+        )
     }
 
     fn verifier_evaluate(

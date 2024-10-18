@@ -139,7 +139,7 @@ mod tests {
     use super::*;
     use crate::base::{
         commitment::{column_bounds::Bounds, ColumnBounds},
-        database::{owned_table_utility::*, ColumnType, OwnedTable},
+        database::{owned_table_utility::*, ColumnNullability, ColumnType, OwnedTable},
         scalar::Curve25519Scalar,
     };
     use alloc::vec::Vec;
@@ -159,6 +159,7 @@ mod tests {
 
     #[test]
     fn we_can_construct_metadata_map_from_columns() {
+        let col_meta = ColumnNullability::NotNullable;
         // No-columns case
         let empty_metadata_map = ColumnCommitmentMetadataMap::from_columns([]);
         assert_eq!(empty_metadata_map.len(), 0);
@@ -177,7 +178,7 @@ mod tests {
 
         let (index_0, metadata_0) = metadata_map.get_index(0).unwrap();
         assert_eq!(index_0, "bigint_column");
-        assert_eq!(metadata_0.column_type(), &ColumnType::BigInt);
+        assert_eq!(metadata_0.column_type(), &ColumnType::BigInt(col_meta));
         if let ColumnBounds::BigInt(Bounds::Sharp(bounds)) = metadata_0.bounds() {
             assert_eq!(bounds.min(), &-5);
             assert_eq!(bounds.max(), &5);
@@ -187,7 +188,7 @@ mod tests {
 
         let (index_1, metadata_1) = metadata_map.get_index(1).unwrap();
         assert_eq!(index_1, "int128_column");
-        assert_eq!(metadata_1.column_type(), &ColumnType::Int128);
+        assert_eq!(metadata_1.column_type(), &ColumnType::Int128(col_meta));
         if let ColumnBounds::Int128(Bounds::Sharp(bounds)) = metadata_1.bounds() {
             assert_eq!(bounds.min(), &100);
             assert_eq!(bounds.max(), &400);
@@ -197,12 +198,12 @@ mod tests {
 
         let (index_2, metadata_2) = metadata_map.get_index(2).unwrap();
         assert_eq!(index_2, "varchar_column");
-        assert_eq!(metadata_2.column_type(), &ColumnType::VarChar);
+        assert_eq!(metadata_2.column_type(), &ColumnType::VarChar(col_meta));
         assert_eq!(metadata_2.bounds(), &ColumnBounds::NoOrder);
 
         let (index_3, metadata_3) = metadata_map.get_index(3).unwrap();
         assert_eq!(index_3, "scalar_column");
-        assert_eq!(metadata_3.column_type(), &ColumnType::Scalar);
+        assert_eq!(metadata_3.column_type(), &ColumnType::Scalar(col_meta));
         assert_eq!(metadata_3.bounds(), &ColumnBounds::NoOrder);
     }
 
@@ -236,6 +237,7 @@ mod tests {
     }
     #[test]
     fn we_can_difference_matching_metadata_maps() {
+        let col_meta = ColumnNullability::NotNullable;
         let table_a = owned_table([
             bigint("bigint_column", [1, 5]),
             int128("int128_column", [100, 200]),
@@ -259,7 +261,7 @@ mod tests {
         // Check metatadata for ordered columns is mostly the same (now bounded)
         let (index_0, metadata_0) = b_difference_a.get_index(0).unwrap();
         assert_eq!(index_0, "bigint_column");
-        assert_eq!(metadata_0.column_type(), &ColumnType::BigInt);
+        assert_eq!(metadata_0.column_type(), &ColumnType::BigInt(col_meta));
         if let ColumnBounds::BigInt(Bounds::Bounded(bounds)) = metadata_0.bounds() {
             assert_eq!(bounds.min(), &-5);
             assert_eq!(bounds.max(), &10);
@@ -269,7 +271,7 @@ mod tests {
 
         let (index_1, metadata_1) = b_difference_a.get_index(1).unwrap();
         assert_eq!(index_1, "int128_column");
-        assert_eq!(metadata_1.column_type(), &ColumnType::Int128);
+        assert_eq!(metadata_1.column_type(), &ColumnType::Int128(col_meta));
         if let ColumnBounds::Int128(Bounds::Bounded(bounds)) = metadata_1.bounds() {
             assert_eq!(bounds.min(), &100);
             assert_eq!(bounds.max(), &500);

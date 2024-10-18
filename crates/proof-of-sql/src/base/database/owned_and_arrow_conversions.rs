@@ -15,8 +15,8 @@
 use super::scalar_and_i256_conversions::convert_scalar_to_i256;
 use crate::base::{
     database::{
-        scalar_and_i256_conversions::convert_i256_to_scalar, OwnedColumn, OwnedTable,
-        OwnedTableError,
+        scalar_and_i256_conversions::convert_i256_to_scalar, ColumnNullability, OwnedColumn,
+        OwnedTable, OwnedTableError,
     },
     map::IndexMap,
     math::decimal::Precision,
@@ -85,17 +85,17 @@ pub enum OwnedArrowConversionError {
 impl<S: Scalar> From<OwnedColumn<S>> for ArrayRef {
     fn from(value: OwnedColumn<S>) -> Self {
         match value {
-            OwnedColumn::Boolean(col) => Arc::new(BooleanArray::from(col)),
-            OwnedColumn::TinyInt(col) => Arc::new(Int8Array::from(col)),
-            OwnedColumn::SmallInt(col) => Arc::new(Int16Array::from(col)),
-            OwnedColumn::Int(col) => Arc::new(Int32Array::from(col)),
-            OwnedColumn::BigInt(col) => Arc::new(Int64Array::from(col)),
-            OwnedColumn::Int128(col) => Arc::new(
+            OwnedColumn::Boolean(_, col) => Arc::new(BooleanArray::from(col)),
+            OwnedColumn::TinyInt(_, col) => Arc::new(Int8Array::from(col)),
+            OwnedColumn::SmallInt(_, col) => Arc::new(Int16Array::from(col)),
+            OwnedColumn::Int(_, col) => Arc::new(Int32Array::from(col)),
+            OwnedColumn::BigInt(_, col) => Arc::new(Int64Array::from(col)),
+            OwnedColumn::Int128(_, col) => Arc::new(
                 Decimal128Array::from(col)
                     .with_precision_and_scale(38, 0)
                     .unwrap(),
             ),
-            OwnedColumn::Decimal75(precision, scale, col) => {
+            OwnedColumn::Decimal75(_, precision, scale, col) => {
                 let converted_col: Vec<i256> = col.iter().map(convert_scalar_to_i256).collect();
 
                 Arc::new(
@@ -104,9 +104,9 @@ impl<S: Scalar> From<OwnedColumn<S>> for ArrayRef {
                         .unwrap(),
                 )
             }
-            OwnedColumn::Scalar(_) => unimplemented!("Cannot convert Scalar type to arrow type"),
-            OwnedColumn::VarChar(col) => Arc::new(StringArray::from(col)),
-            OwnedColumn::TimestampTZ(time_unit, _, col) => match time_unit {
+            OwnedColumn::Scalar(_, _) => unimplemented!("Cannot convert Scalar type to arrow type"),
+            OwnedColumn::VarChar(_, col) => Arc::new(StringArray::from(col)),
+            OwnedColumn::TimestampTZ(_, time_unit, _, col) => match time_unit {
                 PoSQLTimeUnit::Second => Arc::new(TimestampSecondArray::from(col)),
                 PoSQLTimeUnit::Millisecond => Arc::new(TimestampMillisecondArray::from(col)),
                 PoSQLTimeUnit::Microsecond => Arc::new(TimestampMicrosecondArray::from(col)),
@@ -155,6 +155,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
             // Arrow uses a bit-packed representation for booleans.
             // Hence we need to unpack the bits to get the actual boolean values.
             DataType::Boolean => Ok(Self::Boolean(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<BooleanArray>()
@@ -164,6 +165,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .ok_or(OwnedArrowConversionError::NullNotSupportedYet)?,
             )),
             DataType::Int8 => Ok(Self::TinyInt(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<Int8Array>()
@@ -172,6 +174,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .to_vec(),
             )),
             DataType::Int16 => Ok(Self::SmallInt(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<Int16Array>()
@@ -180,6 +183,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .to_vec(),
             )),
             DataType::Int32 => Ok(Self::Int(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<Int32Array>()
@@ -188,6 +192,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .to_vec(),
             )),
             DataType::Int64 => Ok(Self::BigInt(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<Int64Array>()
@@ -196,6 +201,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .to_vec(),
             )),
             DataType::Decimal128(38, 0) => Ok(Self::Int128(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<Decimal128Array>()
@@ -204,6 +210,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .to_vec(),
             )),
             DataType::Decimal256(precision, scale) if *precision <= 75 => Ok(Self::Decimal75(
+                ColumnNullability::NotNullable,
                 Precision::new(*precision).expect("precision is less than 76"),
                 *scale,
                 value
@@ -217,6 +224,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                     .collect(),
             )),
             DataType::Utf8 => Ok(Self::VarChar(
+                ColumnNullability::NotNullable,
                 value
                     .as_any()
                     .downcast_ref::<StringArray>()
@@ -235,6 +243,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                         );
                     let timestamps = array.values().iter().copied().collect::<Vec<i64>>();
                     Ok(OwnedColumn::TimestampTZ(
+                        ColumnNullability::NotNullable,
                         PoSQLTimeUnit::Second,
                         PoSQLTimeZone::try_from(timezone)?,
                         timestamps,
@@ -249,6 +258,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                         );
                     let timestamps = array.values().iter().copied().collect::<Vec<i64>>();
                     Ok(OwnedColumn::TimestampTZ(
+                        ColumnNullability::NotNullable,
                         PoSQLTimeUnit::Millisecond,
                         PoSQLTimeZone::try_from(timezone)?,
                         timestamps,
@@ -263,6 +273,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                         );
                     let timestamps = array.values().iter().copied().collect::<Vec<i64>>();
                     Ok(OwnedColumn::TimestampTZ(
+                        ColumnNullability::NotNullable,
                         PoSQLTimeUnit::Microsecond,
                         PoSQLTimeZone::try_from(timezone)?,
                         timestamps,
@@ -277,6 +288,7 @@ impl<S: Scalar> TryFrom<&ArrayRef> for OwnedColumn<S> {
                         );
                     let timestamps = array.values().iter().copied().collect::<Vec<i64>>();
                     Ok(OwnedColumn::TimestampTZ(
+                        ColumnNullability::NotNullable,
                         PoSQLTimeUnit::Nanosecond,
                         PoSQLTimeZone::try_from(timezone)?,
                         timestamps,

@@ -3,8 +3,8 @@ use crate::{
     base::{
         commitment::Commitment,
         database::{
-            try_multiply_column_types, Column, ColumnRef, ColumnType, CommitmentAccessor,
-            DataAccessor,
+            try_multiply_column_types, Column, ColumnNullability, ColumnRef, ColumnType,
+            CommitmentAccessor, DataAccessor,
         },
         map::IndexSet,
         proof::ProofError,
@@ -59,7 +59,7 @@ impl<C: Commitment> ProofExpr<C> for MultiplyExpr<C> {
         let rhs_column: Column<'a, C::Scalar> =
             self.rhs.result_evaluate(table_length, alloc, accessor);
         let scalars = multiply_columns(&lhs_column, &rhs_column, alloc);
-        Column::Scalar(scalars)
+        Column::Scalar(ColumnNullability::NotNullable, scalars)
     }
 
     #[tracing::instrument(
@@ -91,7 +91,7 @@ impl<C: Commitment> ProofExpr<C> for MultiplyExpr<C> {
                 ),
             ],
         );
-        Column::Scalar(lhs_times_rhs)
+        Column::Scalar(ColumnNullability::NotNullable, lhs_times_rhs)
     }
 
     fn verifier_evaluate(

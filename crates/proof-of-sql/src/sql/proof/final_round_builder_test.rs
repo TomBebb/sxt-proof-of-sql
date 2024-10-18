@@ -2,7 +2,7 @@ use super::{FinalRoundBuilder, ProvableQueryResult, SumcheckRandomScalars};
 use crate::{
     base::{
         commitment::{Commitment, CommittableColumn},
-        database::{Column, ColumnField, ColumnType},
+        database::{Column, ColumnField, ColumnNullability, ColumnType},
         polynomial::{compute_evaluation_vector, CompositePolynomial, MultilinearExtension},
         scalar::Curve25519Scalar,
     },
@@ -136,13 +136,14 @@ fn we_can_form_an_aggregated_sumcheck_polynomial() {
 #[cfg(feature = "arrow")]
 #[test]
 fn we_can_form_the_provable_query_result() {
-    let col1: Column<Curve25519Scalar> = Column::BigInt(&[11_i64, 12]);
-    let col2: Column<Curve25519Scalar> = Column::BigInt(&[-3_i64, -4]);
+    let meta = ColumnNullability::NotNullable;
+    let col1: Column<Curve25519Scalar> = Column::BigInt(meta, &[11_i64, 12]);
+    let col2: Column<Curve25519Scalar> = Column::BigInt(meta, &[-3_i64, -4]);
     let res = ProvableQueryResult::new(2, &[col1, col2]);
 
     let column_fields = vec![
-        ColumnField::new("a".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt),
+        ColumnField::new("a".parse().unwrap(), ColumnType::BigInt(meta)),
+        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt(meta)),
     ];
     let res = RecordBatch::try_from(
         res.to_owned_table::<Curve25519Scalar>(&column_fields)

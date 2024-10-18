@@ -1,5 +1,8 @@
 use super::CommitmentEvaluationProof;
-use crate::base::{commitment::vec_commitment_ext::VecCommitmentExt, database::Column};
+use crate::base::{
+    commitment::vec_commitment_ext::VecCommitmentExt,
+    database::{Column, ColumnNullability},
+};
 use ark_std::UniformRand;
 #[cfg(feature = "blitzar")]
 use blitzar::proof::InnerProductProof;
@@ -20,10 +23,10 @@ pub fn test_simple_commitment_evaluation_proof<CP: CommitmentEvaluationProof>(
     );
 
     let commits = Vec::from_columns_with_offset(
-        [Column::Scalar(&[
-            CP::Scalar::one(),
-            CP::Scalar::one() + CP::Scalar::one(),
-        ])],
+        [Column::Scalar(
+            ColumnNullability::NotNullable,
+            &[CP::Scalar::one(), CP::Scalar::one() + CP::Scalar::one()],
+        )],
         0,
         prover_setup,
     );
@@ -50,7 +53,11 @@ pub fn test_commitment_evaluation_proof_with_length_1<CP: CommitmentEvaluationPr
     let mut transcript = Transcript::new(b"evaluation_proof");
     let proof = CP::new(&mut transcript, &[r], &[], 0, prover_setup);
 
-    let commits = Vec::from_columns_with_offset([Column::Scalar(&[r])], 0, prover_setup);
+    let commits = Vec::from_columns_with_offset(
+        [Column::Scalar(ColumnNullability::NotNullable, &[r])],
+        0,
+        prover_setup,
+    );
 
     let mut transcript = Transcript::new(b"evaluation_proof");
     let r = proof.verify_proof(&mut transcript, &commits[0], &r, &[], 0, 1, verifier_setup);
@@ -78,7 +85,11 @@ pub fn test_random_commitment_evaluation_proof<CP: CommitmentEvaluationProof>(
     let mut transcript = Transcript::new(b"evaluation_proof");
     let proof = CP::new(&mut transcript, &a, &b_point, offset as u64, prover_setup);
 
-    let commits = Vec::from_columns_with_offset([Column::Scalar(&a)], offset, prover_setup);
+    let commits = Vec::from_columns_with_offset(
+        [Column::Scalar(ColumnNullability::NotNullable, &a)],
+        offset,
+        prover_setup,
+    );
 
     let mut b = vec![CP::Scalar::zero(); a.len()];
     crate::base::polynomial::compute_evaluation_vector(&mut b, &b_point);

@@ -1,7 +1,9 @@
 use super::{test_utility::*, DynProofExpr, ProofExpr};
 use crate::base::{
     commitment::InnerProductProof,
-    database::{owned_table_utility::*, Column, OwnedTableTestAccessor, TestAccessor},
+    database::{
+        owned_table_utility::*, Column, ColumnNullability, OwnedTableTestAccessor, TestAccessor,
+    },
 };
 use bumpalo::Bump;
 use curve25519_dalek::RistrettoPoint;
@@ -37,9 +39,12 @@ fn we_can_compute_the_correct_result_of_a_complex_bool_expr_using_result_evaluat
     );
     let alloc = Bump::new();
     let res = bool_expr.result_evaluate(17, &alloc, &accessor);
-    let expected_res = Column::Boolean(&[
-        false, true, false, true, false, true, false, true, false, true, false, true, false, true,
-        false, false, false,
-    ]);
+    let expected_res = Column::Boolean(
+        ColumnNullability::NotNullable,
+        &[
+            false, true, false, true, false, true, false, true, false, true, false, true, false,
+            true, false, false, false,
+        ],
+    );
     assert_eq!(res, expected_res);
 }

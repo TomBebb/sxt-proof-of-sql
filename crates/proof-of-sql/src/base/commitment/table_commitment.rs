@@ -507,7 +507,7 @@ mod tests {
     use super::*;
     use crate::{
         base::{
-            database::{owned_table_utility::*, OwnedColumn},
+            database::{owned_table_utility::*, ColumnNullability, OwnedColumn},
             map::IndexMap,
             scalar::Curve25519Scalar,
         },
@@ -545,7 +545,10 @@ mod tests {
         assert_eq!(empty_table_commitment.num_rows(), 0);
 
         // no-rows case
-        empty_columns_iter.insert("column_a".parse().unwrap(), OwnedColumn::BigInt(vec![]));
+        empty_columns_iter.insert(
+            "column_a".parse().unwrap(),
+            OwnedColumn::BigInt(ColumnNullability::NotNullable, vec![]),
+        );
         let empty_table_commitment =
             TableCommitment::<RistrettoPoint>::try_from_columns_with_offset(
                 &empty_columns_iter,
@@ -596,7 +599,8 @@ mod tests {
         let duplicate_identifier_b = "duplicate_identifier_b".parse().unwrap();
         let unique_identifier = "unique_identifier".parse().unwrap();
 
-        let empty_column = OwnedColumn::<Curve25519Scalar>::BigInt(vec![]);
+        let empty_column =
+            OwnedColumn::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, vec![]);
 
         let from_columns_result = TableCommitment::<RistrettoPoint>::try_from_columns_with_offset(
             [
@@ -653,8 +657,10 @@ mod tests {
         let column_id_b = "column_b".parse().unwrap();
         let column_id_c = "column_c".parse().unwrap();
 
-        let one_row_column = OwnedColumn::<Curve25519Scalar>::BigInt(vec![1]);
-        let two_row_column = OwnedColumn::<Curve25519Scalar>::BigInt(vec![1, 2]);
+        let one_row_column =
+            OwnedColumn::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, vec![1]);
+        let two_row_column =
+            OwnedColumn::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, vec![1, 2]);
 
         let from_columns_result = TableCommitment::<RistrettoPoint>::try_from_columns_with_offset(
             [
@@ -792,7 +798,8 @@ mod tests {
         let column_id_a = "column_a".parse().unwrap();
         let column_id_b = "column_b".parse().unwrap();
 
-        let column_data = OwnedColumn::<Curve25519Scalar>::BigInt(vec![1, 2, 3]);
+        let column_data =
+            OwnedColumn::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, vec![1, 2, 3]);
 
         let mut table_commitment = TableCommitment::<RistrettoPoint>::try_from_columns_with_offset(
             [(&column_id_a, &column_data), (&column_id_b, &column_data)],
@@ -840,9 +847,12 @@ mod tests {
         .unwrap();
         let column_commitments = table_commitment.column_commitments().clone();
 
-        let column_a_append_data = OwnedColumn::<Curve25519Scalar>::BigInt(vec![5, 6, 7]);
-        let column_b_append_data =
-            OwnedColumn::VarChar(["amet", "consectetur"].map(String::from).to_vec());
+        let column_a_append_data =
+            OwnedColumn::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, vec![5, 6, 7]);
+        let column_b_append_data = OwnedColumn::VarChar(
+            ColumnNullability::NotNullable,
+            ["amet", "consectetur"].map(String::from).to_vec(),
+        );
 
         let append_result = table_commitment.try_append_rows(
             [
@@ -1276,11 +1286,14 @@ mod tests {
         let columns = [
             (
                 &"a".parse().unwrap(),
-                &Column::<Curve25519Scalar>::BigInt(&[1, 2, 3]),
+                &Column::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, &[1, 2, 3]),
             ),
             (
                 &"b".parse().unwrap(),
-                &Column::<Curve25519Scalar>::VarChar((&["1", "2", "3"], &b_scals)),
+                &Column::<Curve25519Scalar>::VarChar(
+                    ColumnNullability::NotNullable,
+                    (&["1", "2", "3"], &b_scals),
+                ),
             ),
         ];
 
@@ -1303,11 +1316,14 @@ mod tests {
         let columns2 = [
             (
                 &"a".parse().unwrap(),
-                &Column::<Curve25519Scalar>::BigInt(&[4, 5, 6]),
+                &Column::<Curve25519Scalar>::BigInt(ColumnNullability::NotNullable, &[4, 5, 6]),
             ),
             (
                 &"b".parse().unwrap(),
-                &Column::<Curve25519Scalar>::VarChar((&["4", "5", "6"], &b_scals2)),
+                &Column::<Curve25519Scalar>::VarChar(
+                    ColumnNullability::NotNullable,
+                    (&["4", "5", "6"], &b_scals2),
+                ),
             ),
         ];
 

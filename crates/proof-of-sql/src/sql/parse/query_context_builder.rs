@@ -1,8 +1,8 @@
 use super::{ConversionError, ConversionResult, QueryContext};
 use crate::base::{
     database::{
-        try_add_subtract_column_types, try_multiply_column_types, ColumnRef, ColumnType,
-        SchemaAccessor, TableRef,
+        try_add_subtract_column_types, try_multiply_column_types, ColumnNullability, ColumnRef,
+        ColumnType, SchemaAccessor, TableRef,
     },
     math::decimal::Precision,
 };
@@ -131,7 +131,7 @@ impl<'a> QueryContextBuilder<'a> {
     /// Visits the expression and returns its data type.
     fn visit_expr(&mut self, expr: &Expression) -> ConversionResult<ColumnType> {
         match expr {
-            Expression::Wildcard => Ok(ColumnType::BigInt), // Since COUNT(*) = COUNT(1)
+            Expression::Wildcard => Ok(ColumnType::BigInt(ColumnNullability::NotNullable)), // Since COUNT(*) = COUNT(1)
             Expression::Literal(literal) => self.visit_literal(literal),
             Expression::Column(_) => self.visit_column_expr(expr),
             Expression::Unary { op, expr } => self.visit_unary_expr(*op, expr),
@@ -165,7 +165,9 @@ impl<'a> QueryContextBuilder<'a> {
             | BinaryOperator::Or
             | BinaryOperator::Equal
             | BinaryOperator::GreaterThanOrEqual
-            | BinaryOperator::LessThanOrEqual => Ok(ColumnType::Boolean),
+            | BinaryOperator::LessThanOrEqual => {
+                Ok(ColumnType::Boolean(ColumnNullability::NotNullable))
+            }
             BinaryOperator::Multiply
             | BinaryOperator::Division
             | BinaryOperator::Subtract
@@ -181,13 +183,14 @@ impl<'a> QueryContextBuilder<'a> {
         match op {
             UnaryOperator::Not => {
                 let dtype = self.visit_expr(expr)?;
-                if dtype != ColumnType::Boolean {
-                    return Err(ConversionError::InvalidDataType {
-                        expected: ColumnType::Boolean,
+                if let ColumnType::Boolean(_) = dtype {
+                    Ok(dtype)
+                } else {
+                    Err(ConversionError::InvalidDataType {
+                        expected: ColumnType::Boolean(ColumnNullability::NotNullable),
                         actual: dtype,
-                    });
+                    })
                 }
-                Ok(ColumnType::Boolean)
             }
         }
     }
@@ -198,39 +201,41 @@ impl<'a> QueryContextBuilder<'a> {
         expr: &Expression,
     ) -> ConversionResult<ColumnType> {
         self.context.set_in_agg_scope(true)?;
-
         let expr_dtype = self.visit_expr(expr)?;
 
-        // We only support sum/max/min aggregations on numeric columns.
-        if op != AggregationOperator::Count && expr_dtype == ColumnType::VarChar {
-            return Err(ConversionError::non_numeric_expr_in_agg(
+        match (op, expr_dtype) {
+            (AggregationOperator::Count, _) => {
+                self.context.set_in_agg_scope(false)?;
+                Ok(ColumnType::BigInt(ColumnNullability::NotNullable))
+            }
+            (_, ColumnType::VarChar(_)) => Err(ConversionError::non_numeric_expr_in_agg(
                 expr_dtype.to_string(),
                 op.to_string(),
-            ));
-        }
-
-        self.context.set_in_agg_scope(false)?;
-
-        // Count aggregation always results in an integer type
-        if op == AggregationOperator::Count {
-            Ok(ColumnType::BigInt)
-        } else {
-            Ok(expr_dtype)
+            )),
+            (_, _) => {
+                self.context.set_in_agg_scope(false)?;
+                Ok(expr_dtype)
+            }
         }
     }
 
     #[allow(clippy::unused_self)]
     fn visit_literal(&self, literal: &Literal) -> Result<ColumnType, ConversionError> {
+        let meta = ColumnNullability::NotNullable;
         match literal {
-            Literal::Boolean(_) => Ok(ColumnType::Boolean),
-            Literal::BigInt(_) => Ok(ColumnType::BigInt),
-            Literal::Int128(_) => Ok(ColumnType::Int128),
-            Literal::VarChar(_) => Ok(ColumnType::VarChar),
+            Literal::Boolean(_) => Ok(ColumnType::Boolean(meta)),
+            Literal::BigInt(_) => Ok(ColumnType::BigInt(meta)),
+            Literal::Int128(_) => Ok(ColumnType::Int128(meta)),
+            Literal::VarChar(_) => Ok(ColumnType::VarChar(meta)),
             Literal::Decimal(d) => {
                 let precision = Precision::new(d.precision())?;
-                Ok(ColumnType::Decimal75(precision, d.scale()))
+                Ok(ColumnType::Decimal75(meta, precision, d.scale()))
             }
-            Literal::Timestamp(its) => Ok(ColumnType::TimestampTZ(its.timeunit(), its.timezone())),
+            Literal::Timestamp(its) => Ok(ColumnType::TimestampTZ(
+                meta,
+                its.timeunit(),
+                its.timezone(),
+            )),
         }
     }
 
@@ -261,30 +266,34 @@ pub(crate) fn type_check_binary_operation(
         BinaryOperator::And | BinaryOperator::Or => {
             matches!(
                 (left_dtype, right_dtype),
-                (ColumnType::Boolean, ColumnType::Boolean)
+                (ColumnType::Boolean(_), ColumnType::Boolean(_))
             )
         }
         BinaryOperator::Equal => {
             matches!(
                 (left_dtype, right_dtype),
-                (ColumnType::VarChar, ColumnType::VarChar)
-                    | (ColumnType::TimestampTZ(_, _), ColumnType::TimestampTZ(_, _))
-                    | (ColumnType::Boolean, ColumnType::Boolean)
-                    | (_, ColumnType::Scalar)
-                    | (ColumnType::Scalar, _)
+                (ColumnType::VarChar(_), ColumnType::VarChar(_))
+                    | (
+                        ColumnType::TimestampTZ(_, _, _),
+                        ColumnType::TimestampTZ(_, _, _)
+                    )
+                    | (ColumnType::Boolean(_), ColumnType::Boolean(_))
+                    | (_, ColumnType::Scalar(_))
+                    | (ColumnType::Scalar(_), _)
             ) || (left_dtype.is_numeric() && right_dtype.is_numeric())
         }
         BinaryOperator::GreaterThanOrEqual | BinaryOperator::LessThanOrEqual => {
-            if left_dtype == &ColumnType::VarChar || right_dtype == &ColumnType::VarChar {
-                return false;
-            }
+            match (left_dtype, right_dtype) {
+                (ColumnType::VarChar(_), _) | (_, ColumnType::VarChar(_)) => return false,
+                _ => {}
+            };
             // Due to constraints in bitwise_verification we limit the precision of decimal types to 38
-            if let ColumnType::Decimal75(precision, _) = left_dtype {
+            if let ColumnType::Decimal75(_, precision, _) = left_dtype {
                 if precision.value() > 38 {
                     return false;
                 }
             }
-            if let ColumnType::Decimal75(precision, _) = right_dtype {
+            if let ColumnType::Decimal75(_, precision, _) = right_dtype {
                 if precision.value() > 38 {
                     return false;
                 }
@@ -292,8 +301,11 @@ pub(crate) fn type_check_binary_operation(
             left_dtype.is_numeric() && right_dtype.is_numeric()
                 || matches!(
                     (left_dtype, right_dtype),
-                    (ColumnType::Boolean, ColumnType::Boolean)
-                        | (ColumnType::TimestampTZ(_, _), ColumnType::TimestampTZ(_, _))
+                    (ColumnType::Boolean(_), ColumnType::Boolean(_))
+                        | (
+                            ColumnType::TimestampTZ(_, _, _),
+                            ColumnType::TimestampTZ(_, _, _)
+                        )
                 )
         }
         BinaryOperator::Add => {

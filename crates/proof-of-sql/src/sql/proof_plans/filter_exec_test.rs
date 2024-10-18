@@ -2,8 +2,8 @@ use super::{test_utility::*, FilterExec};
 use crate::{
     base::{
         database::{
-            owned_table_utility::*, Column, ColumnField, ColumnRef, ColumnType, LiteralValue,
-            OwnedTable, OwnedTableTestAccessor, TableRef, TestAccessor,
+            owned_table_utility::*, Column, ColumnField, ColumnNullability, ColumnRef, ColumnType,
+            LiteralValue, OwnedTable, OwnedTableTestAccessor, TableRef, TestAccessor,
         },
         map::{IndexMap, IndexSet},
         math::decimal::Precision,
@@ -33,7 +33,7 @@ fn we_can_correctly_fetch_the_query_result_schema() {
                 DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                     table_ref,
                     a,
-                    ColumnType::BigInt,
+                    ColumnType::BigInt(ColumnNullability::NotNullable),
                 ))),
                 "a",
             ),
@@ -41,7 +41,7 @@ fn we_can_correctly_fetch_the_query_result_schema() {
                 DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                     table_ref,
                     b,
-                    ColumnType::BigInt,
+                    ColumnType::BigInt(ColumnNullability::NotNullable),
                 ))),
                 "b",
             ),
@@ -51,7 +51,7 @@ fn we_can_correctly_fetch_the_query_result_schema() {
             DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                 table_ref,
                 Identifier::try_new("c").unwrap(),
-                ColumnType::BigInt,
+                ColumnType::BigInt(ColumnNullability::NotNullable),
             ))),
             DynProofExpr::Literal(LiteralExpr::new(LiteralValue::BigInt(123))),
         )
@@ -62,14 +62,21 @@ fn we_can_correctly_fetch_the_query_result_schema() {
     assert_eq!(
         column_fields,
         vec![
-            ColumnField::new("a".parse().unwrap(), ColumnType::BigInt),
-            ColumnField::new("b".parse().unwrap(), ColumnType::BigInt)
+            ColumnField::new(
+                "a".parse().unwrap(),
+                ColumnType::BigInt(ColumnNullability::NotNullable)
+            ),
+            ColumnField::new(
+                "b".parse().unwrap(),
+                ColumnType::BigInt(ColumnNullability::NotNullable)
+            )
         ]
     );
 }
 
 #[test]
 fn we_can_correctly_fetch_all_the_referenced_columns() {
+    let meta = ColumnNullability::NotNullable;
     let table_ref = TableRef::new(ResourceId::try_new("sxt", "sxt_tab").unwrap());
     let a = Identifier::try_new("a").unwrap();
     let f = Identifier::try_new("f").unwrap();
@@ -79,7 +86,7 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
                 DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                     table_ref,
                     a,
-                    ColumnType::BigInt,
+                    ColumnType::BigInt(meta),
                 ))),
                 "a",
             ),
@@ -87,7 +94,7 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
                 DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                     table_ref,
                     f,
-                    ColumnType::BigInt,
+                    ColumnType::BigInt(meta),
                 ))),
                 "f",
             ),
@@ -99,7 +106,7 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
                     DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                         table_ref,
                         Identifier::try_new("f").unwrap(),
-                        ColumnType::BigInt,
+                        ColumnType::BigInt(meta),
                     ))),
                     DynProofExpr::Literal(LiteralExpr::new(LiteralValue::BigInt(45))),
                 )
@@ -108,7 +115,7 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
                     DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                         table_ref,
                         Identifier::try_new("c").unwrap(),
-                        ColumnType::BigInt,
+                        ColumnType::BigInt(meta),
                     ))),
                     DynProofExpr::Literal(LiteralExpr::new(LiteralValue::BigInt(-2))),
                 )
@@ -118,7 +125,7 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
                 DynProofExpr::Column(ColumnExpr::new(ColumnRef::new(
                     table_ref,
                     Identifier::try_new("b").unwrap(),
-                    ColumnType::BigInt,
+                    ColumnType::BigInt(meta),
                 ))),
                 DynProofExpr::Literal(LiteralExpr::new(LiteralValue::BigInt(3))),
             )
@@ -134,22 +141,22 @@ fn we_can_correctly_fetch_all_the_referenced_columns() {
             ColumnRef::new(
                 table_ref,
                 Identifier::try_new("a").unwrap(),
-                ColumnType::BigInt
+                ColumnType::BigInt(meta)
             ),
             ColumnRef::new(
                 table_ref,
                 Identifier::try_new("f").unwrap(),
-                ColumnType::BigInt
+                ColumnType::BigInt(meta)
             ),
             ColumnRef::new(
                 table_ref,
                 Identifier::try_new("c").unwrap(),
-                ColumnType::BigInt
+                ColumnType::BigInt(meta)
             ),
             ColumnRef::new(
                 table_ref,
                 Identifier::try_new("b").unwrap(),
-                ColumnType::BigInt
+                ColumnType::BigInt(meta)
             )
         ])
     );
@@ -174,6 +181,7 @@ fn we_can_prove_and_get_the_correct_result_from_a_basic_filter() {
 
 #[test]
 fn we_can_get_an_empty_result_from_a_basic_filter_on_an_empty_table_using_result_evaluate() {
+    let meta = ColumnNullability::NotNullable;
     let data = owned_table([
         bigint("a", [0; 0]),
         bigint("b", [0; 0]),
@@ -197,12 +205,12 @@ fn we_can_get_an_empty_result_from_a_basic_filter_on_an_empty_table_using_result
     let mut builder = FirstRoundBuilder::new();
     expr.first_round_evaluate(&mut builder);
     let fields = &[
-        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("c".parse().unwrap(), ColumnType::Int128),
-        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar),
+        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt(meta)),
+        ColumnField::new("c".parse().unwrap(), ColumnType::Int128(meta)),
+        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar(meta)),
         ColumnField::new(
             "e".parse().unwrap(),
-            ColumnType::Decimal75(Precision::new(75).unwrap(), 0),
+            ColumnType::Decimal75(meta, Precision::new(75).unwrap(), 0),
         ),
     ];
     let res: OwnedTable<Curve25519Scalar> =
@@ -221,6 +229,7 @@ fn we_can_get_an_empty_result_from_a_basic_filter_on_an_empty_table_using_result
 
 #[test]
 fn we_can_get_an_empty_result_from_a_basic_filter_using_result_evaluate() {
+    let meta = ColumnNullability::NotNullable;
     let data = owned_table([
         bigint("a", [1, 4, 5, 2, 5]),
         bigint("b", [1, 2, 3, 4, 5]),
@@ -244,12 +253,12 @@ fn we_can_get_an_empty_result_from_a_basic_filter_using_result_evaluate() {
     let mut builder = FirstRoundBuilder::new();
     expr.first_round_evaluate(&mut builder);
     let fields = &[
-        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("c".parse().unwrap(), ColumnType::Int128),
-        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar),
+        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt(meta)),
+        ColumnField::new("c".parse().unwrap(), ColumnType::Int128(meta)),
+        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar(meta)),
         ColumnField::new(
             "e".parse().unwrap(),
-            ColumnType::Decimal75(Precision::new(1).unwrap(), 0),
+            ColumnType::Decimal75(meta, Precision::new(1).unwrap(), 0),
         ),
     ];
     let res: OwnedTable<Curve25519Scalar> =
@@ -297,6 +306,7 @@ fn we_can_get_no_columns_from_a_basic_filter_with_no_selected_columns_using_resu
 
 #[test]
 fn we_can_get_the_correct_result_from_a_basic_filter_using_result_evaluate() {
+    let meta = ColumnNullability::NotNullable;
     let data = owned_table([
         bigint("a", [1, 4, 5, 2, 5]),
         bigint("b", [1, 2, 3, 4, 5]),
@@ -320,12 +330,12 @@ fn we_can_get_the_correct_result_from_a_basic_filter_using_result_evaluate() {
     let mut builder = FirstRoundBuilder::new();
     expr.first_round_evaluate(&mut builder);
     let fields = &[
-        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt),
-        ColumnField::new("c".parse().unwrap(), ColumnType::Int128),
-        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar),
+        ColumnField::new("b".parse().unwrap(), ColumnType::BigInt(meta)),
+        ColumnField::new("c".parse().unwrap(), ColumnType::Int128(meta)),
+        ColumnField::new("d".parse().unwrap(), ColumnType::VarChar(meta)),
         ColumnField::new(
             "e".parse().unwrap(),
-            ColumnType::Decimal75(Precision::new(1).unwrap(), 0),
+            ColumnType::Decimal75(meta, Precision::new(1).unwrap(), 0),
         ),
     ];
     let res: OwnedTable<Curve25519Scalar> =

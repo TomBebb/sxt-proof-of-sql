@@ -175,7 +175,7 @@ impl<C: Commitment> VecCommitmentExt for Vec<C> {
 mod tests {
     use super::*;
     use crate::base::{
-        database::{Column, OwnedColumn},
+        database::{Column, ColumnNullability, OwnedColumn},
         scalar::Curve25519Scalar,
     };
     use blitzar::{compute::compute_curve25519_commitments, sequence::Sequence};
@@ -183,6 +183,7 @@ mod tests {
 
     #[test]
     fn we_can_convert_from_columns() {
+        let meta = ColumnNullability::NotNullable;
         // empty case
         let commitments = Vec::<RistrettoPoint>::from_columns_with_offset(
             Vec::<Column<Curve25519Scalar>>::new(),
@@ -197,8 +198,8 @@ mod tests {
         let column_b = ["Lorem", "ipsum", "dolor"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a.to_vec()),
-            OwnedColumn::VarChar(column_b.to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a.to_vec()),
+            OwnedColumn::VarChar(meta, column_b.to_vec()),
         ];
 
         let commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
@@ -226,19 +227,20 @@ mod tests {
 
     #[test]
     fn we_can_append_rows() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let mut commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
 
         let new_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[3..].to_vec()),
-            OwnedColumn::VarChar(column_b[3..].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[3..].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[3..].to_vec()),
         ];
 
         commitments
@@ -269,12 +271,13 @@ mod tests {
 
     #[test]
     fn we_cannot_append_rows_with_different_column_count() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let mut commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
@@ -286,6 +289,7 @@ mod tests {
         ));
 
         let new_columns = vec![OwnedColumn::<Curve25519Scalar>::BigInt(
+            meta,
             column_a[3..].to_vec(),
         )];
         assert!(matches!(
@@ -294,9 +298,9 @@ mod tests {
         ));
 
         let new_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[3..].to_vec()),
-            OwnedColumn::VarChar(column_b[3..].to_vec()),
-            OwnedColumn::BigInt(column_a[3..].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[3..].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[3..].to_vec()),
+            OwnedColumn::BigInt(meta, column_a[3..].to_vec()),
         ];
         assert!(matches!(
             commitments.try_append_rows_with_offset(&new_columns, 3, &()),
@@ -306,21 +310,22 @@ mod tests {
 
     #[test]
     fn we_can_extend_columns() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56];
         let column_b = ["Lorem", "ipsum", "dolor"].map(String::from);
         let column_c = ["sit", "amet", "consectetur"].map(String::from);
         let column_d = [78i64, 90, 1112];
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a.to_vec()),
-            OwnedColumn::VarChar(column_b.to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a.to_vec()),
+            OwnedColumn::VarChar(meta, column_b.to_vec()),
         ];
 
         let mut commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
 
         let new_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::VarChar(column_c.to_vec()),
-            OwnedColumn::BigInt(column_d.to_vec()),
+            OwnedColumn::<Curve25519Scalar>::VarChar(meta, column_c.to_vec()),
+            OwnedColumn::BigInt(meta, column_d.to_vec()),
         ];
 
         commitments.extend_columns_with_offset(&new_columns, 0, &());
@@ -356,19 +361,20 @@ mod tests {
 
     #[test]
     fn we_can_add_commitment_collections() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let commitments_a = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
 
         let new_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[3..].to_vec()),
-            OwnedColumn::VarChar(column_b[3..].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[3..].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[3..].to_vec()),
         ];
 
         let commitments_b = Vec::<RistrettoPoint>::from_columns_with_offset(&new_columns, 3, &());
@@ -398,12 +404,13 @@ mod tests {
 
     #[test]
     fn we_cannot_add_commitment_collections_of_mixed_column_counts() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
@@ -416,6 +423,7 @@ mod tests {
         ));
 
         let new_columns = vec![OwnedColumn::<Curve25519Scalar>::BigInt(
+            meta,
             column_a[3..].to_vec(),
         )];
         let new_commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&new_columns, 3, &());
@@ -425,9 +433,9 @@ mod tests {
         ));
 
         let new_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[3..].to_vec()),
-            OwnedColumn::VarChar(column_b[3..].to_vec()),
-            OwnedColumn::BigInt(column_a[3..].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[3..].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[3..].to_vec()),
+            OwnedColumn::BigInt(meta, column_a[3..].to_vec()),
         ];
         let new_commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&new_columns, 3, &());
         assert!(matches!(
@@ -438,19 +446,20 @@ mod tests {
 
     #[test]
     fn we_can_sub_commitment_collections() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let commitments_a = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
 
         let full_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a.to_vec()),
-            OwnedColumn::VarChar(column_b.to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a.to_vec()),
+            OwnedColumn::VarChar(meta, column_b.to_vec()),
         ];
 
         let commitments_b = Vec::<RistrettoPoint>::from_columns_with_offset(&full_columns, 0, &());
@@ -476,12 +485,13 @@ mod tests {
 
     #[test]
     fn we_cannot_sub_commitment_collections_of_mixed_column_counts() {
+        let meta = ColumnNullability::NotNullable;
         let column_a = [12i64, 34, 56, 78, 90];
         let column_b = ["Lorem", "ipsum", "dolor", "sit", "amet"].map(String::from);
 
         let columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a[..3].to_vec()),
-            OwnedColumn::VarChar(column_b[..3].to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a[..3].to_vec()),
+            OwnedColumn::VarChar(meta, column_b[..3].to_vec()),
         ];
 
         let commitments = Vec::<RistrettoPoint>::from_columns_with_offset(&columns, 0, &());
@@ -494,7 +504,10 @@ mod tests {
             Err(NumColumnsMismatch)
         ));
 
-        let full_columns = vec![OwnedColumn::<Curve25519Scalar>::BigInt(column_a.to_vec())];
+        let full_columns = vec![OwnedColumn::<Curve25519Scalar>::BigInt(
+            meta,
+            column_a.to_vec(),
+        )];
         let full_commitments =
             Vec::<RistrettoPoint>::from_columns_with_offset(&full_columns, 0, &());
         assert!(matches!(
@@ -503,9 +516,9 @@ mod tests {
         ));
 
         let full_columns = vec![
-            OwnedColumn::<Curve25519Scalar>::BigInt(column_a.to_vec()),
-            OwnedColumn::VarChar(column_b.to_vec()),
-            OwnedColumn::BigInt(column_a.to_vec()),
+            OwnedColumn::<Curve25519Scalar>::BigInt(meta, column_a.to_vec()),
+            OwnedColumn::VarChar(meta, column_b.to_vec()),
+            OwnedColumn::BigInt(meta, column_a.to_vec()),
         ];
         let full_commitments =
             Vec::<RistrettoPoint>::from_columns_with_offset(&full_columns, 0, &());

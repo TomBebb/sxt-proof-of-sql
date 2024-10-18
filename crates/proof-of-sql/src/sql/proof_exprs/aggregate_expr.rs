@@ -2,7 +2,9 @@ use super::{DynProofExpr, ProofExpr};
 use crate::{
     base::{
         commitment::Commitment,
-        database::{Column, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor},
+        database::{
+            Column, ColumnNullability, ColumnRef, ColumnType, CommitmentAccessor, DataAccessor,
+        },
         map::IndexSet,
         proof::ProofError,
     },
@@ -36,7 +38,7 @@ impl<C: Commitment> ProofExpr<C> for AggregateExpr<C> {
 
     fn data_type(&self) -> ColumnType {
         match self.op {
-            AggregationOperator::Count => ColumnType::BigInt,
+            AggregationOperator::Count => ColumnType::BigInt(ColumnNullability::NotNullable),
             AggregationOperator::Sum => self.expr.data_type(),
             _ => todo!("Aggregation operator not supported here yet"),
         }
